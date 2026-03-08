@@ -162,9 +162,10 @@ const CONFIG = {
     // Load Screen Einstellungen
     LOAD_SCREEN: {
         CYCLE_DURATION: 30000,   // 30 Sekunden für einen vollen Tag-Nacht-Zyklus
-        ZOOM: 1.05,               // Zoom-Faktor (2.5x)
-        CAMERA_OFFSET_Y: 1.5,   // Kamera-Offset in Blöcken (negativ = nach oben)
-        NIGHT_DARKNESS: 0.65     // Dunkelheit bei Nacht (gleich wie im Hauptspiel)
+        ZOOM: 1.05,              // Zoom-Faktor (2.5x)
+        CAMERA_OFFSET_Y: 1.5,    // Kamera-Offset in Blöcken (negativ = nach oben)
+        NIGHT_DARKNESS: 0.65,    // Dunkelheit bei Nacht (gleich wie im Hauptspiel)
+        LOADING_TIME: 8000       // Ladezeit in Millisekunden (8 Sekunden)
     }
 };
 

@@ -6,8 +6,6 @@ const bgCanvas = document.getElementById('bg-canvas');
 const loadingCanvas = document.getElementById('loading-canvas');
 const newGameBtn = document.getElementById('new-game-btn');
 const bgMusic = document.getElementById('bg-music');
-const progressFill = document.getElementById('progress-fill');
-const progressText = document.getElementById('progress-text');
 
 // Canvas Setup
 bgCanvas.width = window.innerWidth;
@@ -262,32 +260,16 @@ function startGame() {
     loadingCameraX = cameraX; // Starte von aktueller Position
     animateLoadingScreen();
     
-    // Zufällige Ladezeit zwischen 5-8 Sekunden
-    const totalTime = 5000 + Math.random() * 3000;
-    const updateInterval = 50;
-    const totalSteps = totalTime / updateInterval;
+    // Verwende die konfigurierte Ladezeit
+    const loadTime = CONFIG.LOAD_SCREEN.LOADING_TIME;
+    const startTime = Date.now();
     
-    let progress = 0;
-    let step = 0;
-    
-    const interval = setInterval(() => {
-        step++;
-        // Nicht-lineare Progression für realistischeres Laden
-        const rawProgress = step / totalSteps;
-        progress = Math.floor(rawProgress * 100);
+    // Warte bis die Ladezeit abgelaufen ist
+    const checkComplete = setInterval(() => {
+        const elapsed = Date.now() - startTime;
         
-        // Manchmal kleine Sprünge, manchmal langsamer
-        if (Math.random() > 0.7) {
-            progress += Math.floor(Math.random() * 5);
-        }
-        
-        progress = Math.min(progress, 100);
-        
-        progressFill.style.width = progress + '%';
-        progressText.textContent = progress + '%';
-        
-        if (progress >= 100) {
-            clearInterval(interval);
+        if (elapsed >= loadTime) {
+            clearInterval(checkComplete);
             
             // Fade out Musik
             const fadeOut = setInterval(() => {
@@ -304,7 +286,7 @@ function startGame() {
                 window.location.href = 'index.html';
             }, 500);
         }
-    }, updateInterval);
+    }, 100);
 }
 
 // Window Resize
