@@ -339,10 +339,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Pixel art textures
 - Procedural generation algorithms
 
-## 📧 Contact
-
-Project Link: [https://github.com/yourusername/block-world](https://github.com/yourusername/block-world)
-
 ---
 
 Made with ❤️ by [Your Name]
