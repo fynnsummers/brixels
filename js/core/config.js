@@ -68,6 +68,12 @@ const CONFIG = {
         'goldore': 4500,     // 4.5 Sekunden (zwischen Coal und Iron)
         'diamondore': 6000,  // 6 Sekunden
         'emeraldore': 7000,  // 7 Sekunden
+        'granite': 3000,     // 3 Sekunden (wie Stone)
+        'diorite': 3000,     // 3 Sekunden (wie Stone)
+        'dirt-grass-tree': 800,  // 0.8 Sekunden (wie dirt-grass)
+        'tree': 2000,        // 2 Sekunden (Holz)
+        'tree-head': 1500,   // 1.5 Sekunden
+        'tree-leaves': 300,  // 0.3 Sekunden (schnell)
         'bedrock': Infinity  // Unzerstörbar
     },
     

@@ -82,6 +82,54 @@ const ITEMS = {
         stackable: true,
         maxStack: 64
     },
+    'granite': {
+        id: 11,
+        name: 'Granite',
+        category: 'blocks',
+        subcategory: 'natural',
+        stackable: true,
+        maxStack: 64
+    },
+    'diorite': {
+        id: 12,
+        name: 'Diorite',
+        category: 'blocks',
+        subcategory: 'natural',
+        stackable: true,
+        maxStack: 64
+    },
+    'dirt-grass-tree': {
+        id: 13,
+        name: 'Grass Block with Tree',
+        category: 'blocks',
+        subcategory: 'natural',
+        stackable: true,
+        maxStack: 64
+    },
+    'tree': {
+        id: 14,
+        name: 'Tree Trunk',
+        category: 'blocks',
+        subcategory: 'natural',
+        stackable: true,
+        maxStack: 64
+    },
+    'tree-head': {
+        id: 15,
+        name: 'Tree Crown',
+        category: 'blocks',
+        subcategory: 'natural',
+        stackable: true,
+        maxStack: 64
+    },
+    'tree-leaves': {
+        id: 16,
+        name: 'Tree Leaves',
+        category: 'blocks',
+        subcategory: 'natural',
+        stackable: true,
+        maxStack: 64
+    },
     
     // Tools - Äxte
     'axe-wood': {

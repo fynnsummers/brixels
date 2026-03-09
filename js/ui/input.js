@@ -7,6 +7,8 @@ class InputHandler {
         this.camera = camera; // Kamera-Referenz für Zoom
         this.inventoryOpen = false; // Inventar-Status
         this.chatOpen = false; // Chat-Status
+        this.pauseOpen = false; // Pause-Menü-Status
+        this.pauseLeaveButton = null; // Leave-Button Position
         this.chatScrollDelta = 0; // Chat-Scroll-Delta
         this.debugMode = false; // Debug-Modus (F3)
         this.mouse = {
@@ -50,7 +52,7 @@ class InputHandler {
                 return;
             }
             
-            // Escape schließt Chat oder Inventar
+            // Escape schließt Chat, Inventar oder öffnet/schließt Pause
             if (e.key === 'Escape') {
                 if (this.chatOpen) {
                     this.chatOpen = false;
@@ -60,11 +62,16 @@ class InputHandler {
                     this.inventoryOpen = false;
                     e.preventDefault();
                     return;
+                } else {
+                    // Toggle Pause-Menü
+                    this.pauseOpen = !this.pauseOpen;
+                    e.preventDefault();
+                    return;
                 }
             }
             
-            // Wenn Chat offen, keine anderen Keys registrieren
-            if (this.chatOpen) {
+            // Wenn Chat oder Pause offen, keine anderen Keys registrieren
+            if (this.chatOpen || this.pauseOpen) {
                 return;
             }
             
@@ -103,8 +110,8 @@ class InputHandler {
         });
         
         window.addEventListener('keyup', (e) => {
-            // Wenn Chat offen, keine Keys registrieren
-            if (this.chatOpen) {
+            // Wenn Chat oder Pause offen, keine Keys registrieren
+            if (this.chatOpen || this.pauseOpen) {
                 return;
             }
             this.keys[e.key.toLowerCase()] = false;
@@ -121,8 +128,19 @@ class InputHandler {
                 this.mouse.clickX = e.clientX;
                 this.mouse.clickY = e.clientY;
                 
-                // Wenn außerhalb der Range, trigger Shake
-                if (!this.mouse.inRange) {
+                // Prüfe Pause-Menü Leave Button
+                if (this.pauseOpen && this.pauseLeaveButton) {
+                    const btn = this.pauseLeaveButton;
+                    if (this.mouse.x >= btn.x && this.mouse.x <= btn.x + btn.width &&
+                        this.mouse.y >= btn.y && this.mouse.y <= btn.y + btn.height) {
+                        // Zurück zu load.html
+                        window.location.href = 'load.html';
+                        return;
+                    }
+                }
+                
+                // Wenn außerhalb der Range, trigger Shake (nur wenn nicht pausiert)
+                if (!this.mouse.inRange && !this.pauseOpen) {
                     this.triggerShake();
                 }
             } else if (e.button === 2) { // Rechte Maustaste

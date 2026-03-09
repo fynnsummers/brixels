@@ -13,7 +13,7 @@ class Renderer {
     }
     
     async loadTextures() {
-        const textureNames = ['stone', 'dirt', 'dirt-grass', 'grass', 'coalore', 'ironore', 'goldore', 'bedrock', 'diamondore', 'emeraldore', 'cursor', 'blocked-cursor', 'inventory', 'chat', 'chat-inactive', 'tooltip'];
+        const textureNames = ['stone', 'dirt', 'dirt-grass', 'grass', 'coalore', 'ironore', 'goldore', 'bedrock', 'diamondore', 'emeraldore', 'granite', 'diorite', 'dirt-grass-tree', 'tree', 'tree-head', 'tree-leaves', 'cursor', 'blocked-cursor', 'inventory', 'chat', 'chat-inactive', 'tooltip', 'title'];
         
         // Player-Animationen hinzufügen
         for (let i = 1; i <= 2; i++) {
@@ -43,7 +43,7 @@ class Renderer {
         
         const promises = textureNames.map(name => {
             let path;
-            if (name === 'cursor' || name === 'blocked-cursor') {
+            if (name === 'cursor' || name === 'blocked-cursor' || name === 'title') {
                 path = `assets/${name}.png`;
             } else if (name.startsWith('p-stand') || name.startsWith('p-go')) {
                 path = `assets/${name}.png`;
@@ -639,13 +639,30 @@ class Renderer {
             }
         }
         
+        // Tooltip (wenn Inventar offen und über Item)
+        if (input.inventoryOpen) {
+            const hoveredSlotData = input.getHoveredSlot(inventory, hotbar, this);
+            if (hoveredSlotData.slotIndex !== -1) {
+                const slot = inventory.getSlot(hoveredSlotData.slotIndex);
+                if (slot.item && slot.count > 0) {
+                    this.renderTooltip(slot.item, hoveredSlotData);
+                }
+            }
+        }
+        
+        // Pause-Menü (wenn ESC gedrückt)
+        if (input.pauseOpen) {
+            this.renderPauseMenu(input);
+        }
+        
+        // Cursor NACH Pause-Menü rendern (damit er über allem ist)
         if (this.textures['cursor']) {
             const cursorX = mouse.x - 12 + mouse.shakeOffset.x;
             const cursorY = mouse.y - 12 + mouse.shakeOffset.y;
             let cursorTexture = this.textures['cursor'];
             
-            // Cursor-Logik nur wenn Inventar geschlossen ist
-            if (!input.inventoryOpen) {
+            // Cursor-Logik nur wenn Inventar geschlossen ist und nicht pausiert
+            if (!input.inventoryOpen && !input.pauseOpen) {
                 if (mouse.flashRed > 0) {
                     cursorTexture = this.textures['blocked-cursor'];
                 } else if (mouse.hasBlockInSlot) {
@@ -656,20 +673,10 @@ class Renderer {
             }
             
             if (cursorTexture) {
-                this.ctx.globalAlpha = input.inventoryOpen ? 1 : mouse.cursorAlpha;
+                // Cursor immer sichtbar (auch im Pause-Menü)
+                this.ctx.globalAlpha = (input.inventoryOpen || input.pauseOpen) ? 1 : mouse.cursorAlpha;
                 this.ctx.drawImage(cursorTexture, cursorX, cursorY, 24, 24);
                 this.ctx.globalAlpha = 1;
-            }
-        }
-        
-        // Tooltip (wenn Inventar offen und über Item)
-        if (input.inventoryOpen) {
-            const hoveredSlotData = input.getHoveredSlot(inventory, hotbar, this);
-            if (hoveredSlotData.slotIndex !== -1) {
-                const slot = inventory.getSlot(hoveredSlotData.slotIndex);
-                if (slot.item && slot.count > 0) {
-                    this.renderTooltip(slot.item, hoveredSlotData);
-                }
             }
         }
         
@@ -1181,6 +1188,52 @@ class Renderer {
         return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     }
     
+    
+    renderPauseMenu(input) {
+        // Schwarzes Overlay
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Title-Logo zentriert oben (kleiner)
+        if (this.textures['title']) {
+            const logoScale = 1; // Kleiner: 1 statt 2
+            const logoWidth = this.textures['title'].width * logoScale;
+            const logoHeight = this.textures['title'].height * logoScale;
+            const logoX = (this.canvas.width - logoWidth) / 2;
+            const logoY = this.canvas.height * 0.25; // 25% von oben
+            
+            this.ctx.drawImage(this.textures['title'], logoX, logoY, logoWidth, logoHeight);
+        }
+        
+        // Leave Button
+        const buttonWidth = 200;
+        const buttonHeight = 50;
+        const buttonX = (this.canvas.width - buttonWidth) / 2;
+        const buttonY = this.canvas.height * 0.6; // 60% von oben
+        
+        // Speichere Button-Position für Klick-Erkennung
+        input.pauseLeaveButton = { x: buttonX, y: buttonY, width: buttonWidth, height: buttonHeight };
+        
+        // Prüfe ob Maus über Button ist
+        const isHovered = input.mouse.x >= buttonX && input.mouse.x <= buttonX + buttonWidth &&
+                         input.mouse.y >= buttonY && input.mouse.y <= buttonY + buttonHeight;
+        
+        // Button-Hintergrund (heller wenn gehovered)
+        this.ctx.fillStyle = isHovered ? 'rgba(100, 100, 100, 0.9)' : 'rgba(60, 60, 60, 0.9)';
+        this.ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
+        
+        // Button-Border
+        this.ctx.strokeStyle = isHovered ? '#FFFFFF' : '#AAAAAA';
+        this.ctx.lineWidth = 3;
+        this.ctx.strokeRect(buttonX, buttonY, buttonWidth, buttonHeight);
+        
+        // Button-Text
+        this.ctx.font = '20px "Press Start 2P", monospace';
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('Leave Game', buttonX + buttonWidth / 2, buttonY + buttonHeight / 2);
+    }
     
     drawPixelatedGradient(colors) {
         const pixelSize = 32; // Größe der "Pixel" für den Gradient (größer = pixeliger)

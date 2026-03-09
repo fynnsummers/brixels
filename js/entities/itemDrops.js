@@ -5,34 +5,52 @@ class ItemDrops {
         this.items = [];
     }
     
-    createDrop(blockX, blockY, blockType) {
+    createDrop(blockX, blockY, blockType, isThrown = false, throwVelocity = null) {
         const worldX = blockX * CONFIG.BLOCK_SIZE + CONFIG.BLOCK_SIZE / 2;
         const worldY = blockY * CONFIG.BLOCK_SIZE + CONFIG.BLOCK_SIZE / 2;
+        
+        let vx, vy;
+        if (isThrown && throwVelocity) {
+            // Geworfenes Item mit Wurfbogen
+            vx = throwVelocity.vx;
+            vy = throwVelocity.vy;
+        } else {
+            // Normaler Drop (z.B. von Block-Breaking)
+            vx = (Math.random() - 0.5) * 2;
+            vy = -3;
+        }
         
         this.items.push({
             x: worldX,
             y: worldY,
-            vx: (Math.random() - 0.5) * 2,
-            vy: -3,
+            vx: vx,
+            vy: vy,
             type: blockType,
-            rotationAngle: Math.random() * Math.PI * 2, // Winkel für 3D-Rotation
-            rotationSpeed: (Math.random() - 0.5) * 0.04, // Langsame Rotation
+            rotationAngle: Math.random() * Math.PI * 2,
+            rotationSpeed: (Math.random() - 0.5) * 0.04,
             bobOffset: Math.random() * Math.PI * 2,
-            age: 0
+            age: 0,
+            pickupDelay: isThrown ? 2000 : 0, // 2 Sekunden Delay für geworfene Items
+            createdTime: Date.now()
         });
     }
     
     update(world, player, inventory) {
+        const now = Date.now();
+        
         for (let i = this.items.length - 1; i >= 0; i--) {
             const item = this.items[i];
+            
+            // Prüfe ob Pickup-Delay noch aktiv ist
+            const canPickup = (now - item.createdTime) >= item.pickupDelay;
             
             // Prüfe Distanz zum Player
             const dx = (player.x + player.width / 2) - item.x;
             const dy = (player.y + player.height / 2) - item.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
             
-            // Wenn in Pickup-Range, ziehe Item zum Player
-            if (distance < CONFIG.PICKUP_RANGE) {
+            // Wenn in Pickup-Range UND Pickup-Delay abgelaufen, ziehe Item zum Player
+            if (canPickup && distance < CONFIG.PICKUP_RANGE) {
                 // Magnet-Effekt
                 const pullSpeed = 0.15;
                 item.vx = dx * pullSpeed;
@@ -47,31 +65,80 @@ class ItemDrops {
                     continue;
                 }
             } else {
-                // Normale Physik wenn außerhalb der Range
+                // Normale Physik wenn außerhalb der Range oder Pickup-Delay aktiv
                 item.vy += CONFIG.ITEM_GRAVITY;
                 item.vx *= 0.95;
             }
             
-            // Bewegung
-            item.x += item.vx;
-            item.y += item.vy;
+            // Bewegung mit Block-Kollision
+            const itemSize = CONFIG.ITEM_SIZE;
+            const halfSize = itemSize / 2;
+            
+            // Horizontale Bewegung mit Kollisionsprüfung
+            const newX = item.x + item.vx;
+            const leftEdge = newX - halfSize;
+            const rightEdge = newX + halfSize;
+            const topEdge = item.y - halfSize;
+            const bottomEdge = item.y + halfSize;
+            
+            // Prüfe horizontale Kollision
+            let horizontalCollision = false;
+            if (item.vx > 0) {
+                // Bewegt sich nach rechts
+                if (world.getBlockAt(rightEdge, item.y, false)) {
+                    horizontalCollision = true;
+                    item.vx = -item.vx * 0.5; // Abprallen mit Energieverlust
+                }
+            } else if (item.vx < 0) {
+                // Bewegt sich nach links
+                if (world.getBlockAt(leftEdge, item.y, false)) {
+                    horizontalCollision = true;
+                    item.vx = -item.vx * 0.5; // Abprallen mit Energieverlust
+                }
+            }
+            
+            if (!horizontalCollision) {
+                item.x = newX;
+            }
+            
+            // Vertikale Bewegung mit Kollisionsprüfung
+            const newY = item.y + item.vy;
+            const newTopEdge = newY - halfSize;
+            const newBottomEdge = newY + halfSize;
+            
+            // Prüfe vertikale Kollision
+            let verticalCollision = false;
+            if (item.vy > 0) {
+                // Bewegt sich nach unten
+                if (world.getBlockAt(item.x, newBottomEdge, false)) {
+                    verticalCollision = true;
+                    item.vy = -item.vy * 0.3; // Abprallen mit mehr Energieverlust
+                    item.vx *= 0.8; // Reibung
+                    
+                    // Wenn Geschwindigkeit zu gering, stoppe
+                    if (Math.abs(item.vy) < 0.5) {
+                        item.vy = 0;
+                        // Positioniere auf Block-Oberfläche
+                        const blockY = Math.floor(newBottomEdge / CONFIG.BLOCK_SIZE);
+                        item.y = blockY * CONFIG.BLOCK_SIZE - halfSize;
+                    }
+                }
+            } else if (item.vy < 0) {
+                // Bewegt sich nach oben
+                if (world.getBlockAt(item.x, newTopEdge, false)) {
+                    verticalCollision = true;
+                    item.vy = -item.vy * 0.3; // Abprallen mit Energieverlust
+                }
+            }
+            
+            if (!verticalCollision) {
+                item.y = newY;
+            }
             
             // 3D-Rotation (langsam um Y-Achse drehen)
             item.rotationAngle += item.rotationSpeed;
             
             item.age++;
-            
-            // Boden-Kollision (nur wenn nicht magnetisiert)
-            if (distance >= CONFIG.PICKUP_RANGE) {
-                const blockX = Math.floor(item.x / CONFIG.BLOCK_SIZE);
-                const blockY = Math.floor((item.y + CONFIG.ITEM_SIZE / 2) / CONFIG.BLOCK_SIZE);
-                
-                if (world.getBlockAt(item.x, item.y + CONFIG.ITEM_SIZE / 2, false)) {
-                    item.vy = 0;
-                    item.vx *= 0.8;
-                    item.y = blockY * CONFIG.BLOCK_SIZE - CONFIG.ITEM_SIZE / 2;
-                }
-            }
         }
     }
     

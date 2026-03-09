@@ -82,13 +82,15 @@ class Inventory {
     endDrag(targetSlotIndex) {
         console.log(`Ending drag to slot ${targetSlotIndex}, dragged from ${this.draggedSlot}`);
         
-        if (this.draggedSlot === null || this.draggedItem === null) return;
+        if (this.draggedSlot === null || this.draggedItem === null) return null;
         
         if (targetSlotIndex < 0 || targetSlotIndex >= this.slots.length) {
-            console.log(`Invalid target slot: ${targetSlotIndex}, returning item to ${this.draggedSlot}`);
-            // Ungültiger Slot - Item zurück zum Original
-            this.slots[this.draggedSlot].item = this.draggedItem.item;
-            this.slots[this.draggedSlot].count = this.draggedItem.count;
+            console.log(`Invalid target slot: ${targetSlotIndex}, item will be dropped`);
+            // Ungültiger Slot - Item wird gedroppt (return item info)
+            const droppedItem = { item: this.draggedItem.item, count: this.draggedItem.count };
+            this.draggedSlot = null;
+            this.draggedItem = null;
+            return droppedItem; // Signalisiere dass Item gedroppt werden soll
         } else {
             const targetSlot = this.slots[targetSlotIndex];
             
@@ -119,6 +121,7 @@ class Inventory {
         
         this.draggedSlot = null;
         this.draggedItem = null;
+        return null; // Kein Drop
     }
     
     cancelDrag() {

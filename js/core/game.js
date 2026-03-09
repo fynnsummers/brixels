@@ -278,7 +278,58 @@ class Game {
                         targetSlot = this.input.getHotbarSlotAtMouse(hotbarX, hotbarY, hotbarWidth, hotbarHeight);
                     }
                     
-                    this.inventory.endDrag(targetSlot);
+                    const droppedItem = this.inventory.endDrag(targetSlot);
+                    
+                    // Wenn Item gedroppt werden soll (außerhalb des Inventars)
+                    if (droppedItem) {
+                        // Berechne Drop-Position und Wurfrichtung
+                        const playerCenterX = this.player.x + this.player.width / 2;
+                        const playerCenterY = this.player.y + this.player.height / 2;
+                        
+                        // Berechne Richtung zur Maus
+                        const mouseWorldX = (this.input.mouse.x / this.camera.zoom) + this.camera.x;
+                        const mouseWorldY = (this.input.mouse.y / this.camera.zoom) + this.camera.y;
+                        
+                        const dirX = mouseWorldX - playerCenterX;
+                        const dirY = mouseWorldY - playerCenterY;
+                        const distance = Math.sqrt(dirX * dirX + dirY * dirY);
+                        
+                        // Normalisiere Richtung
+                        let normalizedDirX = distance > 0 ? dirX / distance : 1;
+                        let normalizedDirY = distance > 0 ? dirY / distance : 0;
+                        
+                        // Begrenze vertikale Richtung: Immer mindestens 30% horizontal
+                        // und maximal 45 Grad nach unten (für Bogen-Effekt)
+                        if (Math.abs(normalizedDirY) > 0.7) {
+                            // Zu steil - korrigiere auf maximal 45 Grad
+                            const sign = normalizedDirY > 0 ? 1 : -1;
+                            normalizedDirY = 0.7 * sign;
+                            normalizedDirX = Math.sqrt(1 - normalizedDirY * normalizedDirY) * (normalizedDirX >= 0 ? 1 : -1);
+                        }
+                        
+                        // Start-Position: Direkt beim Spieler
+                        const startX = Math.floor(playerCenterX / CONFIG.BLOCK_SIZE);
+                        const startY = Math.floor(playerCenterY / CONFIG.BLOCK_SIZE);
+                        
+                        // Wurfgeschwindigkeit: Immer mit Aufwärtsbogen
+                        const throwSpeed = 8; // Stärke des Wurfs
+                        const throwVelocity = {
+                            vx: normalizedDirX * throwSpeed,
+                            vy: normalizedDirY * throwSpeed - 3 // -3 für stärkeren Aufwärtsbogen
+                        };
+                        
+                        // Droppe alle Items aus dem Stack mit Wurfbogen
+                        for (let i = 0; i < droppedItem.count; i++) {
+                            // Kleine zufällige Variation für jeden Item-Drop
+                            const variation = {
+                                vx: throwVelocity.vx + (Math.random() - 0.5) * 1,
+                                vy: throwVelocity.vy + (Math.random() - 0.5) * 1
+                            };
+                            this.itemDrops.createDrop(startX, startY, droppedItem.item, true, variation);
+                        }
+                        
+                        console.log(`Threw ${droppedItem.count}x ${droppedItem.item} in direction (${normalizedDirX.toFixed(2)}, ${normalizedDirY.toFixed(2)})`);
+                    }
                 }
                 this.input.mouse.dragStarted = false;
             }
@@ -304,6 +355,21 @@ class Game {
         
         // Update Break Animations
         this.world.updateAnimations();
+        
+        // Verarbeite Tree Collapse Drops
+        const treeDrops = this.world.getTreeCollapseDrops();
+        for (let drop of treeDrops) {
+            // Erstelle Item-Drop
+            this.itemDrops.createDrop(drop.x, drop.y, drop.type);
+            
+            // Erstelle Partikel
+            this.particleSystem.createBlockBreakParticles(
+                drop.x,
+                drop.y,
+                drop.type,
+                this.renderer.textures
+            );
+        }
         
         // Update Partikel
         this.particleSystem.update();
