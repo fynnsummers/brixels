@@ -1,7 +1,7 @@
 // Spiel-Konfiguration
 const CONFIG = {
     // Version
-    VERSION: 'Alpha 1.0 Dev',
+    VERSION: 'Alpha 0.16 Dev',
     
     BLOCK_SIZE: 32,
     CHUNK_WIDTH: 16,
@@ -158,6 +158,27 @@ const CONFIG = {
         CENTER_VERTICALLY: true  // Text vertikal zentrieren
     },
     
+    // Crafting
+    CRAFTING: {
+        GRID: {
+            COLS: 4,            // 4x4 Grid wie gewünscht
+            ROWS: 4,            // 4x4 Grid wie gewünscht
+            START_X: 63,        // Position im craft.png (angepasst an Textur)
+            START_Y: 63,        // Position im craft.png (angepasst an Textur)
+            SPACING_X: 45.5,    // Abstand zwischen Slots (gleich wie Inventar)
+            SPACING_Y: 47,      // Abstand zwischen Slots (gleich wie Inventar)
+            SLOT_SIZE: 40,      // Größe der Slots (gleich wie Inventar)
+            DEBUG: false         // Debug-Border anzeigen
+        },
+        RESULT: {
+            X: 107.5,              // Position im craft-result.png (angepasst)
+            Y: 110,              // Position im craft-result.png (mittig vertikal)
+            SLOT_SIZE: 87,      // Größe des Result-Slots (gleich wie Grid-Slots)
+            ITEM_SIZE: 60,      // Größe der Items im Result-Slot (größer als normale Items)
+            DEBUG: false         // Debug-Border anzeigen
+        }
+    },
+    
     // Health Bar
     HEALTH_BAR: {
         X: 20,              // X-Position (von links)
@@ -176,8 +197,8 @@ const CONFIG = {
     
     // Load Screen Einstellungen
     LOAD_SCREEN: {
-        CYCLE_DURATION: 30000,   // 30 Sekunden für einen vollen Tag-Nacht-Zyklus
-        ZOOM: 1.05,              // Zoom-Faktor (2.5x)
+        CYCLE_DURATION: 60000,   // 60 Sekunden für einen vollen Tag-Nacht-Zyklus
+        ZOOM: 1.15,              // Zoom-Faktor (2.5x)
         CAMERA_OFFSET_Y: 1.5,    // Kamera-Offset in Blöcken (negativ = nach oben)
         NIGHT_DARKNESS: 0.65,    // Dunkelheit bei Nacht (gleich wie im Hauptspiel)
         LOADING_TIME: 8000       // Ladezeit in Millisekunden (8 Sekunden)

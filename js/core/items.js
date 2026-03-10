@@ -377,6 +377,24 @@ const ITEMS = {
         maxStack: 1,
         damage: 8,
         miningSpeed: 1.5
+    },
+    
+    // Crafting-Materialien
+    'wood': {
+        id: 200,
+        name: 'Wood',
+        category: 'materials',
+        subcategory: 'crafting',
+        stackable: true,
+        maxStack: 64
+    },
+    'wood-stick': {
+        id: 201,
+        name: 'Wood Stick',
+        category: 'materials',
+        subcategory: 'crafting',
+        stackable: true,
+        maxStack: 64
     }
 };
 

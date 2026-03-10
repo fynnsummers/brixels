@@ -6,6 +6,7 @@ class InputHandler {
         this.hotbar = hotbar;
         this.camera = camera; // Kamera-Referenz für Zoom
         this.inventoryOpen = false; // Inventar-Status
+        this.craftingOpen = false; // Crafting-Status
         this.chatOpen = false; // Chat-Status
         this.pauseOpen = false; // Pause-Menü-Status
         this.pauseLeaveButton = null; // Leave-Button Position
@@ -45,14 +46,18 @@ class InputHandler {
         
         window.addEventListener('keydown', (e) => {
             // T-Taste für Chat (vor keys-Registrierung prüfen)
-            if (e.key.toLowerCase() === 't' && !this.chatOpen && !this.inventoryOpen) {
+            if (e.key.toLowerCase() === 't' && !this.chatOpen && !this.inventoryOpen && !this.craftingOpen) {
+                // Schließe andere Overlays
+                this.inventoryOpen = false;
+                this.craftingOpen = false;
+                this.pauseOpen = false;
                 this.chatOpen = true;
                 e.preventDefault();
                 e.stopPropagation();
                 return;
             }
             
-            // Escape schließt Chat, Inventar oder öffnet/schließt Pause
+            // Escape schließt Chat, Inventar, Crafting oder öffnet/schließt Pause
             if (e.key === 'Escape') {
                 if (this.chatOpen) {
                     this.chatOpen = false;
@@ -62,27 +67,55 @@ class InputHandler {
                     this.inventoryOpen = false;
                     e.preventDefault();
                     return;
+                } else if (this.craftingOpen) {
+                    this.craftingOpen = false;
+                    e.preventDefault();
+                    return;
                 } else {
-                    // Toggle Pause-Menü
+                    // Toggle Pause-Menü (schließe andere Overlays)
+                    if (!this.pauseOpen) {
+                        this.inventoryOpen = false;
+                        this.craftingOpen = false;
+                        this.chatOpen = false;
+                    }
                     this.pauseOpen = !this.pauseOpen;
                     e.preventDefault();
                     return;
                 }
             }
             
-            // Wenn Chat oder Pause offen, keine anderen Keys registrieren
+            // Wenn Chat oder Pause offen, keine anderen Keys registrieren (außer E und C)
             if (this.chatOpen || this.pauseOpen) {
+                // E und C sind immer erlaubt
+                if (e.key.toLowerCase() === 'e') {
+                    // Schließe andere Overlays
+                    this.craftingOpen = false;
+                    this.chatOpen = false;
+                    this.pauseOpen = false;
+                    this.inventoryOpen = !this.inventoryOpen;
+                    e.preventDefault();
+                    return;
+                }
+                if (e.key.toLowerCase() === 'c') {
+                    // Schließe andere Overlays
+                    this.inventoryOpen = false;
+                    this.chatOpen = false;
+                    this.pauseOpen = false;
+                    this.craftingOpen = !this.craftingOpen;
+                    e.preventDefault();
+                    return;
+                }
                 return;
             }
             
-            // Pfeiltasten für Zoom (nur wenn Chat/Inventar geschlossen)
-            if (e.key === 'ArrowUp' && !this.inventoryOpen) {
+            // Pfeiltasten für Zoom (nur wenn Chat/Inventar/Crafting geschlossen)
+            if (e.key === 'ArrowUp' && !this.inventoryOpen && !this.craftingOpen) {
                 this.camera.zoomIn();
                 e.preventDefault();
                 return;
             }
             
-            if (e.key === 'ArrowDown' && !this.inventoryOpen) {
+            if (e.key === 'ArrowDown' && !this.inventoryOpen && !this.craftingOpen) {
                 this.camera.zoomOut();
                 e.preventDefault();
                 return;
@@ -99,7 +132,22 @@ class InputHandler {
             
             // E-Taste für Inventar
             if (e.key.toLowerCase() === 'e') {
+                // Schließe andere Overlays
+                this.craftingOpen = false;
+                this.chatOpen = false;
+                this.pauseOpen = false;
                 this.inventoryOpen = !this.inventoryOpen;
+                e.preventDefault();
+            }
+            
+            // C-Taste für Crafting
+            if (e.key.toLowerCase() === 'c') {
+                // Schließe andere Overlays
+                this.inventoryOpen = false;
+                this.chatOpen = false;
+                this.pauseOpen = false;
+                this.craftingOpen = !this.craftingOpen;
+                e.preventDefault();
             }
             
             // Zahlen 1-6 für direkte Slot-Auswahl
@@ -338,7 +386,115 @@ class InputHandler {
         return -1;
     }
     
+    getCraftingSlotAtMouse(craftX, craftY, craftWidth, craftHeight, craftScale) {
+        const mouseX = this.mouse.x;
+        const mouseY = this.mouse.y;
+        
+        // Prüfe ob Maus über Crafting-Grid ist
+        if (mouseX < craftX || mouseX > craftX + craftWidth || mouseY < craftY || mouseY > craftY + craftHeight) {
+            return -1;
+        }
+        
+        // Crafting-Grid-Slot-Berechnung (4x4)
+        const grid = CONFIG.CRAFTING.GRID;
+        
+        const relativeX = mouseX - craftX;
+        const relativeY = mouseY - craftY;
+        
+        // Berechne Spalte (0-3)
+        let col = -1;
+        for (let i = 0; i < grid.COLS; i++) {
+            const slotX = (grid.START_X + grid.SPACING_X * i) * craftScale;
+            const slotEndX = slotX + grid.SLOT_SIZE * craftScale;
+            
+            if (relativeX >= slotX && relativeX <= slotEndX) {
+                col = i;
+                break;
+            }
+        }
+        
+        if (col === -1) return -1;
+        
+        // Berechne Reihe (0-3)
+        let row = -1;
+        for (let i = 0; i < grid.ROWS; i++) {
+            const slotY = (grid.START_Y + grid.SPACING_Y * i) * craftScale;
+            const slotEndY = slotY + grid.SLOT_SIZE * craftScale;
+            
+            if (relativeY >= slotY && relativeY <= slotEndY) {
+                row = i;
+                break;
+            }
+        }
+        
+        if (row === -1) return -1;
+        
+        // Berechne Slot-Index (0-15 für 4x4 Grid)
+        return row * grid.COLS + col;
+    }
+    
+    getCraftingResultSlotAtMouse(resultX, resultY, resultWidth, resultHeight, craftScale) {
+        const mouseX = this.mouse.x;
+        const mouseY = this.mouse.y;
+        
+        // Prüfe ob Maus über Result-Slot ist
+        const result = CONFIG.CRAFTING.RESULT;
+        const slotX = resultX + result.X * craftScale;
+        const slotY = resultY + result.Y * craftScale;
+        const slotSize = result.SLOT_SIZE * craftScale;
+        
+        if (mouseX >= slotX && mouseX <= slotX + slotSize &&
+            mouseY >= slotY && mouseY <= slotY + slotSize) {
+            return 0; // Result slot
+        }
+        
+        return -1;
+    }
+    
     getHoveredSlot(inventory, hotbar, renderer) {
+        // Crafting-Slots prüfen wenn Crafting offen
+        if (this.craftingOpen) {
+            // Berechne Crafting-Overlay-Positionen
+            const hotbarScale = 1.5;
+            const hotbarWidth = renderer.textures[hotbar.getHotbarTextureName()].width * hotbarScale;
+            const craftScale = hotbarWidth / renderer.textures['craft'].width;
+            const craftWidth = renderer.textures['craft'].width * craftScale;
+            const craftHeight = renderer.textures['craft'].height * craftScale;
+            const craftX = (renderer.canvas.width - craftWidth) / 2;
+            const hotbarHeight = renderer.textures[hotbar.getHotbarTextureName()].height * hotbarScale;
+            const hotbarY = renderer.canvas.height - hotbarHeight - 20;
+            const craftY = hotbarY - craftHeight - 20;
+            
+            // Prüfe Crafting-Grid-Slots
+            const craftingSlot = this.getCraftingSlotAtMouse(craftX, craftY, craftWidth, craftHeight, craftScale);
+            if (craftingSlot >= 0) {
+                // Berechne Slot-Position für Crafting-Grid
+                const grid = CONFIG.CRAFTING.GRID;
+                const row = Math.floor(craftingSlot / grid.COLS);
+                const col = craftingSlot % grid.COLS;
+                const slotX = craftX + (grid.START_X + grid.SPACING_X * col) * craftScale;
+                const slotY = craftY + (grid.START_Y + grid.SPACING_Y * row) * craftScale;
+                const slotSize = grid.SLOT_SIZE * craftScale;
+                return { slotIndex: -2000 - craftingSlot, x: slotX, y: slotY, width: slotSize, height: slotSize, isCrafting: true };
+            }
+            
+            // Prüfe Result-Slot
+            const resultWidth = renderer.textures['craft-result'].width * craftScale;
+            const resultHeight = renderer.textures['craft-result'].height * craftScale;
+            const resultX = craftX + craftWidth;
+            const resultY = craftY;
+            const resultSlot = this.getCraftingResultSlotAtMouse(resultX, resultY, resultWidth, resultHeight, craftScale);
+            if (resultSlot >= 0) {
+                const result = CONFIG.CRAFTING.RESULT;
+                const slotX = resultX + result.X * craftScale;
+                const slotY = resultY + result.Y * craftScale;
+                const slotSize = result.SLOT_SIZE * craftScale;
+                return { slotIndex: -3000, x: slotX, y: slotY, width: slotSize, height: slotSize, isCraftingResult: true };
+            }
+            
+            return { slotIndex: -1, x: 0, y: 0, width: 0, height: 0 };
+        }
+        
         // Nur wenn Inventar offen ist
         if (!this.inventoryOpen) return { slotIndex: -1, x: 0, y: 0, width: 0, height: 0 };
         

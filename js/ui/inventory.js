@@ -126,11 +126,22 @@ class Inventory {
     
     cancelDrag() {
         if (this.draggedSlot !== null && this.draggedItem !== null) {
-            // Item zurück zum Original
-            this.slots[this.draggedSlot].item = this.draggedItem.item;
-            this.slots[this.draggedSlot].count = this.draggedItem.count;
-            this.draggedSlot = null;
-            this.draggedItem = null;
+            // Prüfe ob es ein normaler Inventory-Slot ist (>= 0)
+            if (this.draggedSlot >= 0 && this.draggedSlot < this.slots.length && this.slots[this.draggedSlot]) {
+                // Item zurück zum Original Inventory-Slot
+                this.slots[this.draggedSlot].item = this.draggedItem.item;
+                this.slots[this.draggedSlot].count = this.draggedItem.count;
+                this.draggedSlot = null;
+                this.draggedItem = null;
+            } else if (this.draggedSlot < -1000 && this.draggedSlot > -4000) {
+                // Crafting-Slots (negative IDs zwischen -1000 und -4000) - Item wird verworfen
+                this.draggedSlot = null;
+                this.draggedItem = null;
+            } else if (this.draggedSlot === -4000) {
+                // Result-Slot (-4000) - Item NICHT löschen, Drag-Zustand beibehalten
+                console.log(`Result slot drag cancelled, keeping item: ${this.draggedItem.item} x${this.draggedItem.count}`);
+                // draggedSlot und draggedItem bleiben erhalten!
+            }
         }
     }
     

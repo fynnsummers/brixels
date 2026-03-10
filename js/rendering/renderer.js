@@ -13,7 +13,7 @@ class Renderer {
     }
     
     async loadTextures() {
-        const textureNames = ['stone', 'dirt', 'dirt-grass', 'grass', 'coalore', 'ironore', 'goldore', 'bedrock', 'diamondore', 'emeraldore', 'granite', 'diorite', 'dirt-grass-tree', 'tree', 'tree-head', 'tree-leaves', 'cursor', 'blocked-cursor', 'inventory', 'chat', 'chat-inactive', 'tooltip', 'title'];
+        const textureNames = ['stone', 'dirt', 'dirt-grass', 'grass', 'coalore', 'ironore', 'goldore', 'bedrock', 'diamondore', 'emeraldore', 'granite', 'diorite', 'dirt-grass-tree', 'tree', 'tree-head', 'tree-leaves', 'cursor', 'blocked-cursor', 'inventory', 'craft', 'craft-result', 'chat', 'chat-inactive', 'tooltip', 'title', 'wood', 'wood-stick'];
         
         // Player-Animationen hinzufügen
         for (let i = 1; i <= 2; i++) {
@@ -47,7 +47,7 @@ class Renderer {
                 path = `assets/${name}.png`;
             } else if (name.startsWith('p-stand') || name.startsWith('p-go')) {
                 path = `assets/${name}.png`;
-            } else if (name === 'inventory' || name === 'chat' || name === 'chat-inactive' || name === 'tooltip') {
+            } else if (name === 'inventory' || name === 'craft' || name === 'craft-result' || name === 'chat' || name === 'chat-inactive' || name === 'tooltip') {
                 path = `assets/ui/${name}.png`;
             } else if ((name.startsWith('h') || name.startsWith('l')) && name.length === 2) {
                 path = `assets/ui/${name}.png`;
@@ -68,9 +68,9 @@ class Renderer {
         console.log('Loaded textures:', Object.keys(this.textures));
     }
     
-    updateHighlight(world, mouse, inventoryOpen) {
-        if (inventoryOpen) {
-            // Kein Highlight wenn Inventar offen
+    updateHighlight(world, mouse, inventoryOpen, craftingOpen) {
+        if (inventoryOpen || craftingOpen) {
+            // Kein Highlight wenn Inventar oder Crafting offen
             this.targetHighlightAlpha = 0;
             this.highlightAlpha = 0;
             return;
@@ -81,7 +81,7 @@ class Renderer {
         this.highlightAlpha += (this.targetHighlightAlpha - this.highlightAlpha) * CONFIG.HIGHLIGHT_SMOOTH;
     }
     
-    render(world, player, camera, mouse, blockBreaker, particleSystem, hotbar, health, itemDrops, inventory, input, chat) {
+    render(world, player, camera, mouse, blockBreaker, particleSystem, hotbar, health, itemDrops, inventory, input, chat, crafting) {
         // Zeichne Himmel mit Gradient (Tag-Nacht-Zyklus)
         const skyColors = this.getSkyColors();
         this.drawPixelatedGradient(skyColors);
@@ -204,7 +204,7 @@ class Renderer {
         particleSystem.render(this.ctx, camera, this.textures);
         itemDrops.render(this.ctx, camera, this.textures, darkness);
         
-        if (this.highlightAlpha > 0.01 && !mouse.isDown && !input.inventoryOpen) {
+        if (this.highlightAlpha > 0.01 && !mouse.isDown && !input.inventoryOpen && !input.craftingOpen) {
             const highlightWorldX = mouse.blockX * CONFIG.BLOCK_SIZE;
             const highlightWorldY = mouse.blockY * CONFIG.BLOCK_SIZE;
             const highlightScreenX = highlightWorldX - camera.x;
@@ -219,7 +219,7 @@ class Renderer {
             this.ctx.fillRect(highlightScreenX, highlightScreenY, CONFIG.BLOCK_SIZE, CONFIG.BLOCK_SIZE);
         }
         
-        if (mouse.inRange && !input.inventoryOpen) {
+        if (mouse.inRange && !input.inventoryOpen && !input.craftingOpen) {
             const breakingBlock = blockBreaker.getBreakingBlock();
             if (breakingBlock) {
                 const frameIndex = blockBreaker.getCurrentFrame();
@@ -296,6 +296,12 @@ class Renderer {
                             this.ctx.strokeRect(slotScreenX, slotScreenY, grid.SLOT_SIZE * invScale, grid.SLOT_SIZE * invScale);
                         }
                         
+                        // Hover-Effekt: Leichte weiße Füllung
+                        if (hoveredSlotIndex === slotIndex) {
+                            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                            this.ctx.fillRect(slotScreenX, slotScreenY, grid.SLOT_SIZE * invScale, grid.SLOT_SIZE * invScale);
+                        }
+                        
                         // Skip wenn Slot gerade gezogen wird
                         if (inventory.draggedSlot === slotIndex) continue;
                         
@@ -330,8 +336,208 @@ class Renderer {
                     }
                 }
                 
-                // Zeichne gezogenes Item am Cursor
-                if (inventory.draggedItem) {
+                // Zeichne gezogenes Item am Cursor - aber NICHT für Result-Slot Items
+                if (inventory.draggedItem && inventory.draggedSlot !== -4000) {
+                    const texture = this.textures[inventory.draggedItem.item];
+                    if (texture) {
+                        const dragItemSize = itemSize;
+                        const dragX = mouse.x - dragItemSize / 2;
+                        const dragY = mouse.y - dragItemSize / 2;
+                        
+                        this.ctx.globalAlpha = 0.8;
+                        this.ctx.drawImage(texture, dragX, dragY, dragItemSize, dragItemSize);
+                        this.ctx.globalAlpha = 1;
+                        
+                        // Count
+                        if (inventory.draggedItem.count > 1) {
+                            this.ctx.save();
+                            this.ctx.font = '10px "Press Start 2P", monospace';
+                            this.ctx.fillStyle = '#FFFFFF';
+                            this.ctx.strokeStyle = '#000000';
+                            this.ctx.lineWidth = 2;
+                            this.ctx.textAlign = 'right';
+                            this.ctx.textBaseline = 'bottom';
+                            const countText = inventory.draggedItem.count.toString();
+                            this.ctx.strokeText(countText, dragX + dragItemSize, dragY + dragItemSize);
+                            this.ctx.fillText(countText, dragX + dragItemSize, dragY + dragItemSize);
+                            this.ctx.restore();
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Crafting-Overlay (wenn C gedrückt) - NACH Inventar-Overlay
+        if (input.craftingOpen) {
+            // Dunkler Hintergrund
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            // Crafting-Bilder mit gleicher Skalierung wie Inventar
+            if (this.textures['craft'] && this.textures['craft-result']) {
+                const hotbarScale = 1.5;
+                const hotbarWidth = this.textures[hotbar.getHotbarTextureName()].width * hotbarScale;
+                
+                // Berechne Scale basierend auf Hotbar-Breite
+                const craftScale = hotbarWidth / this.textures['craft'].width;
+                const craftWidth = this.textures['craft'].width * craftScale;
+                const craftHeight = this.textures['craft'].height * craftScale;
+                
+                // Craft-Bild mittig positionieren
+                const craftX = (this.canvas.width - craftWidth) / 2;
+                
+                // Position über der Hotbar (gleich wie Inventar)
+                const hotbarHeight = this.textures[hotbar.getHotbarTextureName()].height * hotbarScale;
+                const hotbarY = this.canvas.height - hotbarHeight - 20;
+                const craftY = hotbarY - craftHeight - 20;
+                
+                // Zeichne Craft-Bild
+                this.ctx.drawImage(this.textures['craft'], craftX, craftY, craftWidth, craftHeight);
+                
+                // Craft-Result-Bild direkt rechts neben Craft-Bild
+                const resultWidth = this.textures['craft-result'].width * craftScale;
+                const resultHeight = this.textures['craft-result'].height * craftScale;
+                const resultX = craftX + craftWidth; // Direkt rechts neben craft
+                const resultY = craftY; // Gleiche Y-Position
+                
+                // Zeichne Craft-Result-Bild
+                this.ctx.drawImage(this.textures['craft-result'], resultX, resultY, resultWidth, resultHeight);
+                
+                // Prüfe welcher Crafting-Slot gehovered wird
+                if (hoveredSlotIndex === -1) {
+                    const hoveredSlotData = input.getHoveredSlot(inventory, hotbar, this);
+                    if (hoveredSlotData.slotIndex !== -1) {
+                        hoveredSlotIndex = hoveredSlotData.slotIndex;
+                    }
+                }
+                
+                // Debug: Zeichne Crafting-Grid-Slots (4x4)
+                const craftGrid = CONFIG.CRAFTING.GRID;
+                if (craftGrid.DEBUG) {
+                    this.ctx.strokeStyle = '#FF0000';
+                    this.ctx.lineWidth = 3; // Dicker für bessere Sichtbarkeit
+                    
+                    for (let row = 0; row < craftGrid.ROWS; row++) {
+                        for (let col = 0; col < craftGrid.COLS; col++) {
+                            const slotOriginalX = craftGrid.START_X + craftGrid.SPACING_X * col;
+                            const slotOriginalY = craftGrid.START_Y + craftGrid.SPACING_Y * row;
+                            const slotScreenX = craftX + slotOriginalX * craftScale;
+                            const slotScreenY = craftY + slotOriginalY * craftScale;
+                            const slotSize = craftGrid.SLOT_SIZE * craftScale;
+                            
+                            this.ctx.strokeRect(slotScreenX, slotScreenY, slotSize, slotSize);
+                        }
+                    }
+                }
+                
+                // Debug: Zeichne Result-Slot (etwas größer)
+                const craftResult = CONFIG.CRAFTING.RESULT;
+                if (craftResult.DEBUG) {
+                    this.ctx.strokeStyle = '#00FF00'; // Grün für Result-Slot
+                    this.ctx.lineWidth = 3; // Dicker für bessere Sichtbarkeit
+                    
+                    const resultSlotX = resultX + craftResult.X * craftScale;
+                    const resultSlotY = resultY + craftResult.Y * craftScale;
+                    const resultSlotSize = craftResult.SLOT_SIZE * craftScale;
+                    
+                    this.ctx.strokeRect(resultSlotX, resultSlotY, resultSlotSize, resultSlotSize);
+                }
+                
+                // TODO: Zeichne Items in Crafting-Slots (4x4 Grid)
+                const itemSize = 28 * craftScale; // Gleiche Item-Größe wie Inventar
+                
+                // Zeichne Items in Crafting-Grid-Slots (0-15)
+                for (let row = 0; row < craftGrid.ROWS; row++) {
+                    for (let col = 0; col < craftGrid.COLS; col++) {
+                        const slotIndex = row * craftGrid.COLS + col; // 0-15 für 4x4 Grid
+                        const slot = crafting.getGridSlot(slotIndex);
+                        
+                        const slotOriginalX = craftGrid.START_X + craftGrid.SPACING_X * col;
+                        const slotOriginalY = craftGrid.START_Y + craftGrid.SPACING_Y * row;
+                        const slotScreenX = craftX + slotOriginalX * craftScale;
+                        const slotScreenY = craftY + slotOriginalY * craftScale;
+                        
+                        // Hover-Effekt: Leichte weiße Füllung
+                        if (hoveredSlotIndex === -2000 - slotIndex) {
+                            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                            this.ctx.fillRect(slotScreenX, slotScreenY, craftGrid.SLOT_SIZE * craftScale, craftGrid.SLOT_SIZE * craftScale);
+                        }
+                        
+                        // Zeichne Item wenn vorhanden
+                        if (slot.item && slot.count > 0) {
+                            const slotCenterX = slotScreenX + (craftGrid.SLOT_SIZE * craftScale) / 2;
+                            const slotCenterY = slotScreenY + (craftGrid.SLOT_SIZE * craftScale) / 2;
+                            const itemX = slotCenterX - itemSize / 2;
+                            const itemY = slotCenterY - itemSize / 2;
+                            
+                            const texture = this.textures[slot.item];
+                            if (texture) {
+                                this.ctx.drawImage(texture, itemX, itemY, itemSize, itemSize);
+                            }
+                            
+                            // Zeichne Count
+                            if (slot.count > 1) {
+                                this.ctx.save();
+                                this.ctx.font = '10px "Press Start 2P", monospace';
+                                this.ctx.fillStyle = '#FFFFFF';
+                                this.ctx.strokeStyle = '#000000';
+                                this.ctx.lineWidth = 2;
+                                this.ctx.textAlign = 'right';
+                                this.ctx.textBaseline = 'bottom';
+                                const countText = slot.count.toString();
+                                const countX = slotScreenX + craftGrid.SLOT_SIZE * craftScale - 2;
+                                const countY = slotScreenY + craftGrid.SLOT_SIZE * craftScale - 2;
+                                this.ctx.strokeText(countText, countX, countY);
+                                this.ctx.fillText(countText, countX, countY);
+                                this.ctx.restore();
+                            }
+                        }
+                    }
+                }
+                
+                // Zeichne Result-Item
+                const resultSlot = crafting.getResultSlot();
+                const resultSlotX = resultX + craftResult.X * craftScale;
+                const resultSlotY = resultY + craftResult.Y * craftScale;
+                
+                // Hover-Effekt für Result-Slot: Leichte weiße Füllung
+                if (hoveredSlotIndex === -3000) {
+                    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                    this.ctx.fillRect(resultSlotX, resultSlotY, craftResult.SLOT_SIZE * craftScale, craftResult.SLOT_SIZE * craftScale);
+                }
+                
+                if (resultSlot.item && resultSlot.count > 0) {
+                    const resultCenterX = resultSlotX + (craftResult.SLOT_SIZE * craftScale) / 2;
+                    const resultCenterY = resultSlotY + (craftResult.SLOT_SIZE * craftScale) / 2;
+                    const resultItemSize = craftResult.ITEM_SIZE * craftScale; // Verwende spezielle Result-Item-Größe
+                    const resultItemX = resultCenterX - resultItemSize / 2;
+                    const resultItemY = resultCenterY - resultItemSize / 2;
+                    
+                    const texture = this.textures[resultSlot.item];
+                    if (texture) {
+                        this.ctx.drawImage(texture, resultItemX, resultItemY, resultItemSize, resultItemSize);
+                    }
+                    
+                    // Zeichne Count mit besserem Padding
+                    if (resultSlot.count > 1) {
+                        this.ctx.save();
+                        this.ctx.font = '10px "Press Start 2P", monospace';
+                        this.ctx.fillStyle = '#FFFFFF';
+                        this.ctx.strokeStyle = '#000000';
+                        this.ctx.lineWidth = 2;
+                        this.ctx.textAlign = 'right';
+                        this.ctx.textBaseline = 'bottom';
+                        const countText = resultSlot.count.toString();
+                        const countX = resultSlotX + craftResult.SLOT_SIZE * craftScale - 8; // Mehr Padding von rechts
+                        const countY = resultSlotY + craftResult.SLOT_SIZE * craftScale - 8; // Mehr Padding von unten
+                        this.ctx.strokeText(countText, countX, countY);
+                        this.ctx.fillText(countText, countX, countY);
+                        this.ctx.restore();
+                    }
+                }
+                
+                // Zeichne gezogenes Item am Cursor (für Crafting) - aber NICHT für Result-Slot Items
+                if (inventory.draggedItem && inventory.draggedSlot !== -4000) {
                     const texture = this.textures[inventory.draggedItem.item];
                     if (texture) {
                         const dragItemSize = itemSize;
@@ -386,8 +592,8 @@ class Renderer {
             
             this.ctx.drawImage(this.textures[hotbarTextureName], hotbarX, hotbarY, hotbarWidth, hotbarHeight);
             
-            // Prüfe welcher Hotbar-Slot gehovered wird (nur wenn Inventar offen)
-            if (input.inventoryOpen && hoveredSlotIndex === -1) {
+            // Prüfe welcher Hotbar-Slot gehovered wird (wenn Inventar oder Crafting offen)
+            if ((input.inventoryOpen || input.craftingOpen) && hoveredSlotIndex === -1) {
                 hoveredSlotIndex = input.getHotbarSlotAtMouse(hotbarX, hotbarY, hotbarWidth, hotbarHeight);
             }
             
@@ -399,12 +605,19 @@ class Renderer {
             const itemSize = 28 * scale;
             
             for (let i = 0; i < 6; i++) {
+                const slotOriginalX = slotStartX + slotSpacing * i;
+                const slotOriginalY = slotStartY;
+                const slotScreenX = hotbarX + slotOriginalX * scale;
+                const slotScreenY = hotbarY + slotOriginalY * scale;
+                
+                // Hover-Effekt: Leichte weiße Füllung
+                if (hoveredSlotIndex === i) {
+                    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                    this.ctx.fillRect(slotScreenX, slotScreenY, slotWidth * scale, slotHeight * scale);
+                }
+                
                 const slot = inventory.getSlot(i);
                 if (slot.item && slot.count > 0) {
-                    const slotOriginalX = slotStartX + slotSpacing * i;
-                    const slotOriginalY = slotStartY;
-                    const slotScreenX = hotbarX + slotOriginalX * scale;
-                    const slotScreenY = hotbarY + slotOriginalY * scale;
                     const slotCenterX = slotScreenX + (slotWidth * scale) / 2;
                     const slotCenterY = slotScreenY + (slotHeight * scale) / 2;
                     const itemX = slotCenterX - itemSize / 2;
@@ -661,8 +874,8 @@ class Renderer {
             const cursorY = mouse.y - 12 + mouse.shakeOffset.y;
             let cursorTexture = this.textures['cursor'];
             
-            // Cursor-Logik nur wenn Inventar geschlossen ist und nicht pausiert
-            if (!input.inventoryOpen && !input.pauseOpen) {
+            // Cursor-Logik nur wenn alle Overlays geschlossen sind
+            if (!input.inventoryOpen && !input.craftingOpen && !input.pauseOpen) {
                 if (mouse.flashRed > 0) {
                     cursorTexture = this.textures['blocked-cursor'];
                 } else if (mouse.hasBlockInSlot) {
@@ -673,10 +886,39 @@ class Renderer {
             }
             
             if (cursorTexture) {
-                // Cursor immer sichtbar (auch im Pause-Menü)
-                this.ctx.globalAlpha = (input.inventoryOpen || input.pauseOpen) ? 1 : mouse.cursorAlpha;
+                // Cursor immer sichtbar (auch in allen Overlays)
+                this.ctx.globalAlpha = (input.inventoryOpen || input.craftingOpen || input.pauseOpen) ? 1 : mouse.cursorAlpha;
                 this.ctx.drawImage(cursorTexture, cursorX, cursorY, 24, 24);
                 this.ctx.globalAlpha = 1;
+            }
+        }
+        
+        // Zeichne Result-Slot Item am Cursor (auch außerhalb der Overlays)
+        if (inventory.draggedSlot === -4000 && inventory.draggedItem) {
+            const texture = this.textures[inventory.draggedItem.item];
+            if (texture) {
+                const dragItemSize = 32; // Größe des gezogenen Items
+                const dragItemX = mouse.x - dragItemSize / 2;
+                const dragItemY = mouse.y - dragItemSize / 2;
+                
+                this.ctx.drawImage(texture, dragItemX, dragItemY, dragItemSize, dragItemSize);
+                
+                // Zeichne Count
+                if (inventory.draggedItem.count > 1) {
+                    this.ctx.save();
+                    this.ctx.font = '10px "Press Start 2P", monospace';
+                    this.ctx.fillStyle = '#FFFFFF';
+                    this.ctx.strokeStyle = '#000000';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.textAlign = 'right';
+                    this.ctx.textBaseline = 'bottom';
+                    const countText = inventory.draggedItem.count.toString();
+                    const countX = dragItemX + dragItemSize - 2;
+                    const countY = dragItemY + dragItemSize - 2;
+                    this.ctx.strokeText(countText, countX, countY);
+                    this.ctx.fillText(countText, countX, countY);
+                    this.ctx.restore();
+                }
             }
         }
         

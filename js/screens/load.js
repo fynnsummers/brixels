@@ -132,7 +132,11 @@ function drawPixelatedGradient(ctx, colors) {
 
 // Texturen laden
 async function loadTextures() {
-    const textureNames = ['stone', 'dirt', 'dirt-grass', 'grass', 'coalore'];
+    const textureNames = [
+        'stone', 'dirt', 'dirt-grass', 'grass', 'coalore', 'ironore', 'goldore', 
+        'diamondore', 'emeraldore', 'bedrock', 'diorite', 'granite',
+        'tree', 'tree-leaves', 'tree-head', 'dirt-grass-tree', 'wood', 'wood-stick'
+    ];
     
     const promises = textureNames.map(name => {
         return loadImage(name, `assets/textures/${name}.png`);
