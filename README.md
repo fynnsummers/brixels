@@ -1,5 +1,5 @@
 ﻿# 🎮 Brixel
-
+![Brixel Logo](https://github.com/fynnsummers/brixel/tree/main/assets/title.png)
 <p align="center">
   <img width="381" height="159" alt="Brixel Title" src="https://github.com/fynnsummers/brixel/tree/main/assets/title.png" />
 </p>
@@ -323,4 +323,5 @@ MIT License - see [LICENSE.md](LICENSE.md) for details
 <p align="center">
 Made by <strong>Fynn Summers, Kai, Finn</strong>
 </p>
+
 
