@@ -1,7 +1,7 @@
 ﻿# 🎮 Brixel
 
 <p align="center">
-  <img width="381" height="159" alt="Brixel Title" src="https://github.com/fynnsummers/brixel/blob/main/assets/title.png" />
+  <img width="381px" alt="Brixel Title" src="https://github.com/fynnsummers/brixel/blob/main/assets/title.png" />
 </p>
 
 <p align="center">
@@ -324,6 +324,7 @@ MIT License - see [LICENSE.md](LICENSE.md) for details
 <p align="center">
 Made by <strong>Fynn Summers, Kai, Finn</strong>
 </p>
+
 
 
 
