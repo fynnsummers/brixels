@@ -13,6 +13,7 @@
 A **2D Minecraft-inspired sandbox game** built with **vanilla JavaScript** and **HTML5 Canvas**.  
 Explore procedurally generated worlds, mine resources, craft tools, and survive the day-night cycle.
 
+[Live Demo (V0.17 Alpha)](https://brixels.netlify.app/)
 ---
 
 ## ✨ Features
@@ -323,6 +324,7 @@ MIT License - see [LICENSE.md](LICENSE.md) for details
 <p align="center">
 Made by <strong>Fynn Summers, Kai, Finn</strong>
 </p>
+
 
 
 
