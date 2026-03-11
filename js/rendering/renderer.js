@@ -1480,9 +1480,9 @@ class Renderer {
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Title-Logo zentriert oben (kleiner)
+        // Title-Logo zentriert oben (viel kleiner für das neue große title.png)
         if (this.textures['title']) {
-            const logoScale = 1; // Kleiner: 1 statt 2
+            const logoScale = 0.3; // Viel kleiner: 0.3 statt 1 für das neue große title.png
             const logoWidth = this.textures['title'].width * logoScale;
             const logoHeight = this.textures['title'].height * logoScale;
             const logoX = (this.canvas.width - logoWidth) / 2;
